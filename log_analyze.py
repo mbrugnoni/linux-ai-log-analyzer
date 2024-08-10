@@ -1,11 +1,14 @@
 import configparser
 import os
 import requests
+import subprocess
+import shutil
 
 ### Getting the discord key from the .env file ###
 config = configparser.ConfigParser()
 config.read('.env')
 groq_key = config['DEFAULT']['GROQ_API_KEY']
+directory_path = '/tmp/analyzer'
 
 # Set API key and endpoint URL
 # GROQ_API_KEY = "your_api_key_here"
@@ -24,7 +27,12 @@ def check_journalctl_and_export_logs():
 
     # Export error logs (priority err, crit, alert, and emerg)
     error_log_file = "/tmp/analyzer/error_logs.json"
-    error_log_command = f"journalctl -p err > {error_log_file}"
+    error_log_command = f"journalctl -p err | tail -1000 > {error_log_file}"
+    subprocess.run(error_log_command, shell=True, check=True)
+
+    # Grab the usage from top for performance analytics
+    top_file = "/tmp/analyzer/performance_logs.json"
+    top_command = f"top -b -n 1 > top_snapshot.txt | tail -50 > {top_file}"
     subprocess.run(error_log_command, shell=True, check=True)
 
     print("Logs exported successfully to /tmp/analyzer/")
@@ -87,12 +95,16 @@ def send_log_files_to_groq(api_key, directory_path, api_endpoint):
                     // SYSTEM ISSUES //\n\
                     Describe any issues with the system here.\n\
                     // RECOMMENDATION //\n\
+                    \n\n\
+                    // PERFORMANCE ISSUES //\n\
+                    Describe any issues with the system here.\n\
+                    // RECOMMENDATION //\n\
                     Describe any troubleshooting tips for the system issues found.\n\
-                    
+                    \
                     Log data:\n{file_data}"
                 }
             ],
-            "model": "mixtral-8x7b-32768",
+            "model": "llama-3.1-70b-versatile",
             "temperature": 0,
             "max_tokens": 1024,
             # "top_p": 1,
@@ -118,16 +130,13 @@ def send_log_files_to_groq(api_key, directory_path, api_endpoint):
         print(f'{directory_path} directory does not exist.')
 
 # # Example usage
-# api_key = os.environ.get('GROQ_API_KEY')
-# directory_path = '/tmp/analyzer'
+
+# 
 # api_endpoint = 'https://api.groq.com/openai/v1/chat/completions'
-
-
-
 
 
 if __name__ == "__main__":
     check_journalctl_and_export_logs()
-    send_log_files_to_groq(api_key, directory_path, api_endpoint)
+    send_log_files_to_groq(groq_key, directory_path, url)
     remove_tmp_dir()
     
