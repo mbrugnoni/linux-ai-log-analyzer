@@ -77,7 +77,19 @@ def send_log_files_to_groq(api_key, directory_path, api_endpoint):
             "messages": [
                 {
                     "role": "user",
-                    "content": f"Analyze this log and provide any helpful troubleshooting tips for any issues that are found. Dont report on anything that is harmless and can be ignored. Only report on actionable items that are a priority for troubleshooting.:\n{file_data}"
+                    "content": f"Analyze this log and provide any helpful troubleshooting tips for any issues that are found. Dont report on anything that is harmless and can be ignored. Only report on actionable items that are a priority for troubleshooting.\n\
+                    Responses should be formatted like the following example:\n\
+                    // AUTH ISSUES //\n\
+                    Describe any issues with authorization here.\n\
+                    // RECOMMENDATION //\n\
+                    Describe any troubleshooting tips for the authorization issues found.\n\
+                    \n\n\
+                    // SYSTEM ISSUES //\n\
+                    Describe any issues with the system here.\n\
+                    // RECOMMENDATION //\n\
+                    Describe any troubleshooting tips for the system issues found.\n\
+                    
+                    Log data:\n{file_data}"
                 }
             ],
             "model": "mixtral-8x7b-32768",
@@ -88,32 +100,34 @@ def send_log_files_to_groq(api_key, directory_path, api_endpoint):
             "stop": None
             }
 
-
+            # Send the data to Groq API
+            response = requests.post(api_endpoint, json=data, headers=headers)
             # Make the HTTP request
-            response = requests.post(url, headers=headers, data=json.dumps(data))
+            # response = requests.post(url, headers=headers, data=json.dumps(data))
 
             # Get the response content as a JSON object
             response_json = response.json()
             groq_response= (response_json['choices'][0]['message']['content'])
-            payload = {'data': log_data}
+                        
             
-            # Send the data to Groq API
-            response = requests.post(api_endpoint, json=payload, headers=headers)
             
             # Print response
-            print(f'Response from Groq API for {log_file}:', response.json())
+            # print(f'Response from Groq API for {log_file}:', response.json())
+            print(groq_response)
     else:
         print(f'{directory_path} directory does not exist.')
 
-# Example usage
-api_key = os.environ.get('GROQ_API_KEY')
-directory_path = '/tmp/analyzer'
-api_endpoint = 'https://api.groq.com/openai/v1/chat/completions'
+# # Example usage
+# api_key = os.environ.get('GROQ_API_KEY')
+# directory_path = '/tmp/analyzer'
+# api_endpoint = 'https://api.groq.com/openai/v1/chat/completions'
 
-send_log_files_to_groq(api_key, directory_path, api_endpoint)
+
 
 
 
 if __name__ == "__main__":
     check_journalctl_and_export_logs()
+    send_log_files_to_groq(api_key, directory_path, api_endpoint)
     remove_tmp_dir()
+    
